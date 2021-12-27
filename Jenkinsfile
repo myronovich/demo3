@@ -26,7 +26,7 @@
             }
             stage ('Docker Push') {
                 writeFile file: 'push.sh', text:
-                "docker push us.gcr.io/gcp101233-lv61301devops/646/newteachfront:build-$BUILD_NUMBER/frontend:latest"
+                "docker push us.gcr.io/gcp101233-lv61301devops/646/newteachfront:build-$BUILD_NUMBER"
                 sh "bash push.sh"
             }
         }
