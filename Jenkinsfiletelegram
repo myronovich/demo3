@@ -1,0 +1,64 @@
+pipeline {
+    agent any
+    stages {
+        stage('cleanup') {
+            steps {
+                writeFile file: 'cleanup.sh', text:
+                "rm -rf pipelinef"
+                 sh "bash cleanup.sh"
+            }
+        }
+             stage('scm') {
+            steps {
+            git branch: 'main', url: 'https://github.com/myronovich/demo3'
+            }
+        }
+        stage('npm install') {
+            steps {
+                writeFile file: 'install.sh', text: 
+                "cd /var/lib/jenkins/workspace/pipelinef\nnpm install"
+                 sh "bash install.sh"
+            }
+        }
+        stage('docker build ') {
+            steps {
+                writeFile file: 'build.sh', text: 
+                "cd /var/lib/jenkins/workspace/pipelinef\ndocker build . -t us.gcr.io/gcp101233-lv61301devops/646/newteachfront:build-$BUILD_NUMBER"
+                sh "bash build.sh"
+            }
+        }
+         stage('docker push ') {
+            steps {
+             writeFile file: 'push.sh', text:
+                "docker push us.gcr.io/gcp101233-lv61301devops/646/newteachfront:build-$BUILD_NUMBER"
+                sh "bash push.sh"
+            }
+        }
+    }
+       
+       
+        
+        post {
+            success {            
+            withCredentials([string(credentialsId: 'token', variable: 'token'), string(credentialsId: 'chatid', variable: 'chatid')]) {
+                sh  ("""
+                curl -s -X POST https://api.telegram.org/bot${token}/sendMessage -d chat_id=${chatid} -d parse_mode=markdown -d text='*${env.JOB_NAME}* : Результат *Branch*: master *збілдало?* : OK *запушилось?* = YES'
+                """)
+                }
+			}
+            aborted {             
+             withCredentials([string(credentialsId: 'token', variable: 'token'), string(credentialsId: 'chatid', variable: 'chatid')]) {
+                sh  ("""
+                curl -s -X POST https://api.telegram.org/bot${token}/sendMessage -d chat_id=${chatid} -d parse_mode=markdown -d text='*${env.JOB_NAME}* : POC *Branch*: ${env.GIT_BRANCH} *Build* : `Aborted` *Published* = `Aborted`'
+                 """)
+                }
+			}
+            failure {
+             withCredentials([string(credentialsId: 'token', variable: 'token'), string(credentialsId: 'chatid', variable: 'chatid')]) {
+                sh  ("""
+                 curl -s -X POST https://api.telegram.org/bot${token}/sendMessage -d chat_id=${chatid} -d parse_mode=markdown -d text='*${env.JOB_NAME}* : POC  *Branch*: ${env.GIT_BRANCH} *Build* : `not OK` *Published* = `no`'
+                """)
+                }
+            }
+       }
+}    
